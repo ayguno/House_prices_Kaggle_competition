@@ -88,11 +88,38 @@ test$Alley[which(is.na(test$Alley))] <- "NoAlley"
 test$Alley <- factor(test$Alley)
 ```
 
+###FireplaceQu
+
+Based on the data desxription:
+
+FireplaceQu: Fireplace quality
+
+       Ex       Excellent - Exceptional Masonry Fireplace
+       Gd       Good - Masonry Fireplace in main level
+       TA       Average - Prefabricated Fireplace in main living area or Masonry Fireplace in basement
+       Fa       Fair - Prefabricated Fireplace in basement
+       Po       Poor - Ben Franklin Stove
+       NA       No Fireplace
+
+```{r}
+
+ggplot(data = train, aes(x = FireplaceQu, y = log10(SalePrice), fill= FireplaceQu))+
+        geom_boxplot()
+
+```
+
+Let's look at through a simple linear model:
+
+```{r}
+hist(train$SalePrice)
+hist(log10(train$SalePrice)) # Looks more gaussian
 
 
 
-
-
+FirePlaceFit <- lm(log10(train$SalePrice) ~ FireplaceQu, data = train)
+summary(FirePlaceFit)
+plot(FirePlaceFit)
+```
 
 
 
