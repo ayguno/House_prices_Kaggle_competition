@@ -75,8 +75,28 @@ library(ggplot2)
 ggplot(data = train, aes(x = Alley, y = log(SalePrice), fill= Alley))+
         geom_boxplot()
 ```
-Alley seems to be important. Convert NAs to "NoAlley" to make more sense.
+Alley seems to be important. Gravel homes have significantly lower price. Convert NAs to "NoAlley" to make more sense.
 
 ```{r}
-train$Alley[is.na(train$Alley)]
+train$Alley <- as.character(train$Alley)
+train$Alley[which(is.na(train$Alley))] <- "NoAlley"
+train$Alley <- factor(train$Alley)
+
+#Also transform the test set
+test$Alley <- as.character(test$Alley)
+test$Alley[which(is.na(test$Alley))] <- "NoAlley"
+test$Alley <- factor(test$Alley)
 ```
+
+
+
+
+
+
+
+
+
+
+
+
+
