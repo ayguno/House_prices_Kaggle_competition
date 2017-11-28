@@ -111,6 +111,7 @@ ggplot(data = train, aes(x = FireplaceQu, y = log10(SalePrice), fill= FireplaceQ
 Let's look at through a simple linear model:
 
 ```{r}
+par(mfrow=c(1,2))
 hist(train$SalePrice)
 hist(log10(train$SalePrice)) # Looks more gaussian
 
@@ -118,9 +119,23 @@ hist(log10(train$SalePrice)) # Looks more gaussian
 
 FirePlaceFit <- lm(log10(train$SalePrice) ~ FireplaceQu, data = train)
 summary(FirePlaceFit)
+par(mfrow=c(2,2))
 plot(FirePlaceFit)
 ```
+It appears that all levels of this feature also have significantly different mean Sales prices. Again, converting NAs to NoFireplace to be more consistent.
 
+```{r}
+train$FireplaceQu <- as.character(train$FireplaceQu)
+train$FireplaceQu[which(is.na(train$FireplaceQu))] <- "NoFireplace"
+train$FireplaceQu <- factor(train$FireplaceQu)
+
+#Also transform the test set
+test$FireplaceQu <- as.character(test$FireplaceQu)
+test$FireplaceQu[which(is.na(test$FireplaceQu))] <- "NoFireplace"
+test$FireplaceQu <- factor(test$FireplaceQu)
+```
+
+###PoolQC
 
 
 
