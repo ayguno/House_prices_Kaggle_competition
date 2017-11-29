@@ -135,8 +135,6 @@ test$FireplaceQu[which(is.na(test$FireplaceQu))] <- "NoFireplace"
 test$FireplaceQu <- factor(test$FireplaceQu)
 ```
 
-
-
 ###PoolQC
 
 
