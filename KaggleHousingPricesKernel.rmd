@@ -27,7 +27,7 @@ knitr::opts_chunk$set(results = "markup", fig.align = "center",
 train <- read.csv("train.csv"); test <- read.csv("test.csv")
 ```
 
-## Summarizing the data
+# Summarizing the data
 ```{r}
 summary(train)
 ```
@@ -132,12 +132,12 @@ test$FireplaceQu <- factor(test$FireplaceQu)
 
 Based on the data description:
 
-PoolQC: Pool quality
-       Ex       Excellent
-       Gd       Good
-       TA       Average/Typical
-       Fa       Fair
-       NA       No Pool
+        PoolQC: Pool quality
+               Ex       Excellent
+               Gd       Good
+               TA       Average/Typical
+               Fa       Fair
+               NA       No Pool
        
 ```{r}       
 library(ggplot2)
@@ -146,8 +146,126 @@ ggplot(data = train, aes(x = PoolQC, y = log10(SalePrice), fill = PoolQC))+
 
 ```
 
-Houses with excellent pool condition have significantly higher sales prices. We will also keep this feature, converting NAs to "NoPool":
+Note that actually very few houses have pools. Houses with excellent pool condition have significantly higher sales prices. We will also keep this feature, converting NAs to "NoPool":
 
+```{r}
+train$PoolQC <- as.character(train$PoolQC)
+train$PoolQC[which(is.na(train$PoolQC))] <- "NoPool"
+train$PoolQC <- factor(train$PoolQC)
 
+#Also transform the test set
+test$PoolQC <- as.character(test$PoolQC)
+test$PoolQC[which(is.na(test$PoolQC))] <- "NoPool"
+test$PoolQC <- factor(test$PoolQC)
+```
 
+###Fence
 
+Based on the data description:
+
+        Fence: Fence quality
+               GdPrv    Good Privacy
+               MnPrv    Minimum Privacy
+               GdWo     Good Wood
+               MnWw     Minimum Wood/Wire
+               NA       No Fence 
+   
+```{r}
+library(ggplot2)
+ggplot(data = train, aes(x = Fence, y = log10(SalePrice), fill = Fence))+
+        geom_boxplot()
+
+FenceFit <- lm(log10(train$SalePrice) ~ Fence, data = train)
+summary(FenceFit)
+
+```
+
+Interestingly, this feature might have a complex relationship, if any at all, with the response variable. The effects of each of the level deemed as significant, so we will keep this feature at this point as well.
+
+```{r}
+train$Fence <- as.character(train$Fence)
+train$Fence[which(is.na(train$Fence))] <- "NoFence"
+train$Fence <- factor(train$Fence)
+
+#Also transform the test set
+test$Fence <- as.character(test$Fence)
+test$Fence[which(is.na(test$Fence))] <- "NoFence"
+test$Fence <- factor(test$Fence)
+```
+
+###MiscFeature
+
+Based on the data description:
+
+        MiscFeature: Miscellaneous feature not covered in other categories
+               Elev     Elevator
+               Gar2     2nd Garage (if not described in garage section)
+               Othr     Other
+               Shed     Shed (over 100 SF)
+               TenC     Tennis Court
+               NA       None
+               
+We will deal with the remaining missing value containing features in the next stages of our analysis.
+
+```{r}
+table(train$MiscFeature)
+ggplot(data = train, aes(x = MiscFeature, y = log10(SalePrice), fill = MiscFeature))+
+        geom_boxplot()
+```
+Again, very few houses have this features, and not sure if these qualities have a real impact on the house value amongst other measured features. Neverthless, I will maintain this feature as well. Just converting NAs to "NoMiscFeature" to be more clear:
+
+```{r}
+train$MiscFeature <- as.character(train$MiscFeature)
+train$MiscFeature[which(is.na(train$MiscFeature))] <- "NoMiscFeature"
+train$MiscFeature <- factor(train$MiscFeature)
+
+#Also transform the test set
+test$MiscFeature <- as.character(test$MiscFeature)
+test$MiscFeature[which(is.na(test$MiscFeature))] <- "NoMiscFeature"
+test$MiscFeature <- factor(test$MiscFeature)
+```
+
+#Developing expectations from data
+
+Here I will explore the data further, in order to develope a better understanding about the relationships between features and the home prices.
+
+## Watching for potential collinearities 
+
+Let's look at the continuous features in the data set:
+
+```{r, fig.align='center'}
+cont.var <-NULL
+for(i in 1:ncol(train)){
+        if(class(train[,i]) == "integer" | class(train[,i]) == "numeric"){
+                cont.var <- c(cont.var,i)
+        }
+}
+```
+
+###Part1
+
+```{r,fig.width=12,fig.height=12}
+pairs(log10(train$SalePrice) ~ ., data = train[,cont.var[1:10]], cex = 0.05, pch = 19, col = "navy")
+```
+
+- We need to remove ID, since this is just an identifier for the houses, has no predictive value as expected.
+- OverallQual and OverallCond look strong predictors, but might have some collinearity.
+- Yearbuilt and YearRemodAdd also look good predictors but most likely contain redundant information.
+- For the LOT and SF features, it could be better to look at after log transformation, since the data looks skewed.
+
+```{r,fig.width=6,fig.height=6}
+par(mfrow=c(3,2))
+hist(train$LotArea, breaks = 50, col = "navy");hist(log10(train$LotFrontage),breaks=50,col = "navy")
+hist(train$MasVnrArea, breaks = 50,col = "navy");hist(log10(train$MasVnrArea),breaks=50,col = "navy")
+hist(train$BsmtFinSF1, breaks = 50,col = "navy");hist(log10(train$BsmtFinSF1),breaks=50,col = "navy")
+```
+
+Indeed these features look more gaussian when they are is log10 transformed. 
+
+```{r,fig.width=6,fig.height=6}
+pairs(log10(train$SalePrice) ~ log10(train$LotArea) + log10(train$MasVnrArea) + log10(train$BsmtFinSF1),cex = 0.1, pch = 19, col = "navy")
+```
+
+When transformed, these features seem to do a better job in explain the variability in the response variable.
+
+Therefore, we will log10 transform these 3 variables in both training and test data sets:
