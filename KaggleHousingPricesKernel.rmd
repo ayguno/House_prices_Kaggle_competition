@@ -229,7 +229,7 @@ test$MiscFeature <- factor(test$MiscFeature)
 
 Here I will explore the data further, in order to develope a better understanding about the relationships between features and the home prices.
 
-## Watching for potential collinearities 
+## Continuous features: watching for strong predictors and potential collinearities 
 
 Let's look at the continuous features in the data set:
 
@@ -242,7 +242,7 @@ for(i in 1:ncol(train)){
 }
 ```
 
-###Part1
+###Part1: transforming LotArea to make it more gaussian
 
 ```{r,fig.width=12,fig.height=12}
 pairs(log10(train$SalePrice) ~ ., data = train[,cont.var[1:10]], cex = 0.05, pch = 19, col = "navy")
@@ -255,17 +255,75 @@ pairs(log10(train$SalePrice) ~ ., data = train[,cont.var[1:10]], cex = 0.05, pch
 
 ```{r,fig.width=6,fig.height=6}
 par(mfrow=c(3,2))
-hist(train$LotArea, breaks = 50, col = "navy");hist(log10(train$LotFrontage),breaks=50,col = "navy")
-hist(train$MasVnrArea, breaks = 50,col = "navy");hist(log10(train$MasVnrArea),breaks=50,col = "navy")
-hist(train$BsmtFinSF1, breaks = 50,col = "navy");hist(log10(train$BsmtFinSF1),breaks=50,col = "navy")
+hist(train$LotArea, breaks = 50, col = "navy");hist(log10(train$LotArea+1),breaks=50,col = "navy")
+hist(train$MasVnrArea, breaks = 50,col = "navy");hist(log10(train$MasVnrArea+1),breaks=50,col = "navy")
+hist(train$BsmtFinSF1, breaks = 50,col = "navy");hist(log10(train$BsmtFinSF1+1),breaks=50,col = "navy")
 ```
 
-Indeed these features look more gaussian when they are is log10 transformed. 
+Indeed one of these features (LotArea) look more gaussian when it is log10 transformed. 
 
 ```{r,fig.width=6,fig.height=6}
-pairs(log10(train$SalePrice) ~ log10(train$LotArea) + log10(train$MasVnrArea) + log10(train$BsmtFinSF1),cex = 0.1, pch = 19, col = "navy")
+pairs(log10(train$SalePrice) ~ log10(train$LotArea+1) + log10(train$MasVnrArea+1) + log10(train$BsmtFinSF1+1),cex = 0.1, pch = 19, col = "navy")
 ```
 
-When transformed, these features seem to do a better job in explain the variability in the response variable.
+When transformed, lotArea seems to do a better job in explaining the variability in the SalePrice, other 2 variables however, have substantial 0 values and it is questionable how much this transformation might help.
 
-Therefore, we will log10 transform these 3 variables in both training and test data sets:
+Therefore, I will only transform the LotArea at this stage and leave the other features as they are, for feature selection steps.
+
+
+
+###Part2: Area related features generally explain variation in the SalePrice
+
+```{r,fig.width=12,fig.height=12}
+pairs(log10(train$SalePrice) ~ ., data = train[,cont.var[11:20]], cex = 0.05, pch = 19, col = "navy")
+```
+
+###Part3: Size of the garage and number of rooms are good predictors
+
+```{r,fig.width=12,fig.height=12}
+pairs(log10(train$SalePrice) ~ ., data = train[,cont.var[22:31]], cex = 0.05, pch = 19, col = "navy")
+```
+
+Arguably, these features are all related to the area of the house.
+
+###Part4: fairly weak predictors
+
+```{r,fig.width=12,fig.height=12}
+pairs(log10(train$SalePrice) ~ ., data = train[,cont.var[32:38]], cex = 0.05, pch = 19, col = "navy")
+```
+
+Processing the identified features:
+```{r}
+# Remove ID variable
+
+train.ID <- train$Id #Hold it in a new variable
+train <- train[, -1]
+
+library(dplyr)
+
+train <- dplyr::mutate(train, log10.LotArea = log10(LotArea))
+train <- dplyr::select(train, -LotArea)
+
+# Also transform in the test set
+test <- dplyr::mutate(test, log10.LotArea = log10(LotArea))
+test <- dplyr::select(test, -LotArea)
+
+```
+
+## Categorical predictors: feature engineering to dummy variables
+
+Now let's look at the categorical variables to see if certain ones are more powerful than others:
+
+```{r}
+cat.var <-NULL
+for(i in 1:ncol(train)){
+        if(class(train[,i]) == "factor"){
+                cat.var <- c(cat.var,i)
+        }
+}
+length(cat.var)
+```
+
+We have 43 categorical variables, some of them have only few levels. We will try to reduce the number of them by visualizing them. 
+
+- First look at which features are redundant, i.e: does not explain sensible amount of variability in the SalePrice, 
