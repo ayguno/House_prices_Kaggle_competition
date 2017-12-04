@@ -284,7 +284,7 @@ pairs(log10(train$SalePrice) ~ ., data = train[,cont.var[11:20]], cex = 0.05, pc
 pairs(log10(train$SalePrice) ~ ., data = train[,cont.var[22:31]], cex = 0.05, pch = 19, col = "navy")
 ```
 
-Arguably, these features are all related to the area of the house.
+Arguably, these features are all related to the overall area of the house.
 
 ###Part4: fairly weak predictors
 
@@ -363,6 +363,10 @@ test.processed <- convert.to.dummy(test)
 
 # Note that not all the levels are present in the test set, therefore we need to make the features same.
 
- 
+consensus.fearures <- which(colnames(training.processed) %in% colnames(test.processed)) 
+training.processed.SalePrice <- training.processed$SalePrice
+
+training.processed <- training.processed[,consensus.fearures]
+training.processed$SalePrice <- training.processed.SalePrice
 
 ```
