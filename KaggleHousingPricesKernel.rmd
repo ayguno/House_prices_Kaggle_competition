@@ -310,7 +310,7 @@ test <- dplyr::select(test, -LotArea)
 
 ```
 
-## Categorical predictors: feature engineering to dummy variables
+## Categorical predictors: feature engineering to create dummy variables
 
 Now let's look at the categorical variables to see if certain ones are more powerful than others:
 
@@ -336,7 +336,7 @@ convert.to.dummy <- function(data.set){
            for(i in 1:ncol(data.set)){
                 if(class(data.set[,i]) == "factor"){
                         cat.var <- c(cat.var,i)
-                        factor.levels <- levels(data.set[,i])
+                        factor.levels <- levels(data.set[,i]) # Try to find a way to classify NA's as "NO" otherwise they generate problem downstream
                                 for(j in seq_along(factor.levels)){
                                 dummy.vector = ifelse(data.set[,i] == factor.levels[j],1,0)
                                 dummy.vector <- data.frame(dummy.vector)
@@ -364,9 +364,44 @@ test.processed <- convert.to.dummy(test)
 # Note that not all the levels are present in the test set, therefore we need to make the features same.
 
 consensus.fearures <- which(colnames(training.processed) %in% colnames(test.processed)) 
-training.processed.SalePrice <- training.processed$SalePrice
+training.processed.SalePrice <- training.processed$SalePrice #Keep the original outcome variable 
 
-training.processed <- training.processed[,consensus.fearures]
-training.processed$SalePrice <- training.processed.SalePrice
+training.processed <- training.processed[,consensus.fearures] #Keep the same features as in the test set
+training.processed <- data.frame(Log.SalePrice = log(training.processed.SalePrice),training.processed) # Add the Log of the response variable
+
+```
+
+## Missing value imputation
+
+We still have missing values in some of our features, which will be a problem down the road. 
+
+```{r}
+
+apply(is.na(training.processed), 2, sum)[apply(is.na(training.processed), 2, sum) != 0]
+
+```
+
+
+# Modeling 
+
+## Fitting a lasso regression model to data
+
+```{r,eval=FALSE}
+
+# Need to deal with the missing data first!!
+
+library(glmnet)
+
+# We create a matrix of predictors
+x.training = model.matrix(Log.SalePrice ~ . -1, data = training.processed)
+x.testing = model.matrix( ~ . -1, data = test.processed)
+
+y = training.processed$Log.SalePrice
+
+# Fit lasso regression to training data
+fit.lasso <- glmnet(x.training,y, family = "gaussian")
+plot(fit.lasso, xvar = "lambda", label = TRUE)
+plot(fit.lasso, xvar = "dev", label = TRUE)
+
 
 ```
