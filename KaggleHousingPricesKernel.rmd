@@ -327,9 +327,7 @@ length(cat.var)
 We have 43 categorical variables, some of them have only few levels. This is a challenge in many ways. It is not feasible to look each of them individually, therefore, we will first convert them to binary variables and try to use regularization or decision tree-based approaches to select and use most useful features.
 
 ```{r}
-library(caret)
 # Write a function that gets a data set and converts all factor variables to dummy variables
-
 convert.to.dummy <- function(data.set){
         cat.var <-NULL
         temp.data <- data.frame(1:nrow(data.set))
@@ -337,7 +335,15 @@ convert.to.dummy <- function(data.set){
                 if(class(data.set[,i]) == "factor"){
                         cat.var <- c(cat.var,i)
                         factor.levels <- levels(data.set[,i]) # Try to find a way to classify NA's as "NO" otherwise they generate problem downstream
-                                for(j in seq_along(factor.levels)){
+                                # First check if there is any 'NA-level'
+                                if(any(is.na(data.set[,i]))){
+                                        dummy.vector = ifelse(is.na(data.set[,i]),1,0)
+                                        dummy.vector <- data.frame(dummy.vector)
+                                        colnames(dummy.vector)[1] = paste("NO",names((data.set)[i]),sep = ".")
+                                        temp.data <- cbind(temp.data,dummy.vector)
+                                }
+                        
+                                for(j in seq_along(factor.levels)){ # Then deal with normal factor levels
                                 dummy.vector = ifelse(data.set[,i] == factor.levels[j],1,0)
                                 dummy.vector <- data.frame(dummy.vector)
                                 colnames(dummy.vector)[1] = paste(names((data.set)[i]),
@@ -355,6 +361,9 @@ convert.to.dummy <- function(data.set){
            return(data.set)     
 }
 
+# Keep test.IDs aside
+test.ID <- test$Id
+
 # Process the training set
 training.processed <- convert.to.dummy(train)
 
@@ -362,12 +371,19 @@ training.processed <- convert.to.dummy(train)
 test.processed <- convert.to.dummy(test)
 
 # Note that not all the levels are present in the test set, therefore we need to make the features same.
-
-consensus.fearures <- which(colnames(training.processed) %in% colnames(test.processed)) 
 training.processed.SalePrice <- training.processed$SalePrice #Keep the original outcome variable 
 
-training.processed <- training.processed[,consensus.fearures] #Keep the same features as in the test set
+consensus.features1 <- which(colnames(training.processed) %in% colnames(test.processed))
+training.processed <- training.processed[,consensus.features1] #Keep the same features as in the test set
+
+consensus.features2 <- which(colnames(test.processed) %in% colnames(training.processed))
+test.processed <- test.processed[,consensus.features2] #Keep the same features as in the training set
+
+identical(colnames(test.processed), colnames(training.processed))
+# Same features in both sets!
+
 training.processed <- data.frame(Log.SalePrice = log(training.processed.SalePrice),training.processed) # Add the Log of the response variable
+test.processed <- data.frame(ID = test.ID,test.processed) # Add the ID variable
 
 ```
 
