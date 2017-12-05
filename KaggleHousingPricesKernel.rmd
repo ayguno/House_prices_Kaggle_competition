@@ -550,5 +550,7 @@ fit.lasso <- glmnet(x.training,y, family = "gaussian")
 plot(fit.lasso, xvar = "lambda", label = TRUE)
 plot(fit.lasso, xvar = "dev", label = TRUE)
 
-
 ```
+
+
+Lasso is a nice way of reducing the features while still trying to explain the variance and therefore trying to win the bias-variance trade-off. In this case we notice that only 4 features are able to explain 30% of the deviance, while adding all features is only able to explain 40% of it. It is more feasible to use this restricted model with the few features and their shrunken coefficients.
