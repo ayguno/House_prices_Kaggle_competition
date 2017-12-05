@@ -564,7 +564,7 @@ Lasso is a nice way of reducing the features while still trying to explain the v
 It is best to choose the optimal lambda using cross-validation, with the aim of minimizing **mean squared error:**:
 
 ```{r}
-
+#cv.lasso will be the list containing the coefficients and information of our optimal model fit using cross-validation (10 fold by default)
 cv.lasso <- cv.glmnet(x.training,y, family = "gaussian")
 plot(cv.lasso)
 
@@ -583,8 +583,35 @@ The two vertical lines are produced in the plot, the left one marks the model wi
 
 **When choosing the optimal model, we might prefer to get the more restricted model that is indicated by the second vertical line, which is default in glmnet package, due to the 1 standard error conversion.**
 
-The final model coefficients we obtained by cross-validation and the non-zero features remaining:
+The final (optimal) model coefficients we obtained by cross-validation and the non-zero features remaining:
 
 ```{r}
-
+coef(cv.lasso)
 ```
+
+Note that our final model includes ~30 features with non-zero coefficients. We therefore significantly reduced the size of the data set by selecting features through lasso regression. The resulting model explains more than 80% of the deviance in the outcome, which is considerable good for the training set.
+
+We also note that some of the dummy variables remained in the model, while majority of them removed. It seems to be good idea to keep all levels as seperate dummy variables until the regularization, since we don't know which ones may be important in the final model context.
+
+###Making predictions using the best lasso model fit
+
+Let's first start with the training set:
+
+```{r}
+pred <- predict(cv.lasso, newx = x.training)
+
+#Calculating the root mean squared error
+rmse.training = sqrt(mean((training.processed$Log.SalePrice - pred)^2))
+rmse.training
+
+#Pearson correlation:
+cor.training = cor(training.processed$Log.SalePrice,pred)
+
+plot(x = pred, y = training.processed$Log.SalePrice, cex = 0.5, col = "navy", pch = 19)
+text(x = max(pred), y = min(training.processed$Log.SalePrice)+0.3,
+     labels = paste0("RMSE: ",rmse.training))
+```
+
+Therefore, the RMSE we obtained from the training set is ~15%. 
+
+Next we will try to use test set to estimate the house prices using our model.
