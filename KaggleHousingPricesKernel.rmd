@@ -515,16 +515,27 @@ apply(is.na(test.processed), 2, sum)[apply(is.na(test.processed), 2, sum) != 0]
 Some features regarding Basement and Garage have missing values:
 
 ```{r}
-test.processed[which(is.na(test.processed)),which(apply(is.na(test.processed), 2, sum) != 0 )]
+test.processed[which(apply(is.na(test.processed), 1, sum) != 0),which(apply(is.na(test.processed), 2, sum) != 0 )]
 ```
 
-# Building models using training set 
+Fortunately, the missing values are only restricted to 3 house records. It is likely these unusual houses are either lacking basement or garage. Since all these features are numeric, we will simply place zero instead of NA's for these values. This is of course based on our assumption.
+
+```{r}
+for (i in 1:ncol(test.processed)) {
+        if(any(is.na(test.processed[,i]))){
+                test.processed[is.na(test.processed[,i]),i] <- 0
+        }
+}
+```
+
+
+This completes missing value imputation as no missing values left in either training and test data sets.
+
+# Predictive modeling using the training set
 
 ## Fitting a lasso regression model to data
 
 ```{r,eval=FALSE}
-
-# Need to deal with the missing data first!!
 
 library(glmnet)
 
