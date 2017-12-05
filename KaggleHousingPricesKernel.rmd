@@ -345,6 +345,10 @@ convert.to.dummy <- function(data.set){
                         
                                 for(j in seq_along(factor.levels)){ # Then deal with normal factor levels
                                 dummy.vector = ifelse(data.set[,i] == factor.levels[j],1,0)
+                                
+                                #Since we already dealt with NAs above
+                                if(any(is.na(dummy.vector))){dummy.vector[is.na(dummy.vector)] <- 0} 
+                                
                                 dummy.vector <- data.frame(dummy.vector)
                                 colnames(dummy.vector)[1] = paste(names((data.set)[i]),
                                                                   factor.levels[j],sep = ".")
@@ -396,9 +400,125 @@ We still have missing values in some of our features, which will be a problem do
 apply(is.na(training.processed), 2, sum)[apply(is.na(training.processed), 2, sum) != 0]
 
 ```
+```{r}
+
+apply(is.na(test.processed), 2, sum)[apply(is.na(test.processed), 2, sum) != 0]
+
+```
 
 
-# Modeling 
+##GarageYrBlt
+
+We have 81 missing cases in our training set, these are the houses actually they don't have a garage.
+
+```{r}
+plot(y =training.processed$Log.SalePrice, x =training.processed$GarageYrBlt, pch = 19, col = "navy", cex = 0.5)
+```
+
+It looks like this feature has some relationship with the outcome, as also we can generally expect that newer houses are going to be more expensive. Therefore, we should make an attempt to impute the values missing from this feature.
+
+```{r}
+plot(training.processed$YearBuilt, training.processed$GarageYrBlt, pch = 19, col = "navy", cex = 0.5)
+```
+
+As we expected, for most of the houses the year that garage was built is the same as the year the house was built. Therefore, for imputation purpose it is sensible to use the YearBuilt feature to fill these issing values in the GarageYrBuilt feature. While this is not consistent with the fact that these houses do not contain any garage, since we captured that in the categorical features we engineered, at this point imputing the years seems to be more appropriate than removing these data points alltogether:
+
+```{r}
+#Impute in the training set
+training.processed$GarageYrBlt[is.na(training.processed$GarageYrBlt)] <- training.processed$YearBuilt[is.na(training.processed$GarageYrBlt)]
+
+
+#Impute in the test set
+test.processed$GarageYrBlt[is.na(test.processed$GarageYrBlt)] <- test.processed$YearBuilt[is.na(test.processed$GarageYrBlt)]
+
+```
+
+##LotFrontage
+
+Let's look at this feature more closely:
+
+```{r}
+plot(x = training.processed$LotFrontage, y = training.processed$Log.SalePrice, cex = 0.5, col = "navy" , pch = 19)
+abline(lm(training.processed$Log.SalePrice ~ training.processed$LotFrontage))
+```
+
+Again this feature seems to have some degree of relationship with the response. We suspect that this feature has relationship with other features that relate to the Lot or the general area of the house:
+
+```{r}
+cor(training.processed$LotFrontage,training.processed$log10.LotArea, use = "complete.obs")
+cor(training.processed$LotFrontage,training.processed$GarageArea, use = "complete.obs")
+cor(training.processed$LotFrontage,training.processed$MasVnrArea, use = "complete.obs")
+
+# Note that correlation gets better when log10 transformed:
+cor(log10(training.processed$LotFrontage), training.processed$log10.LotArea, use = "complete.obs")
+
+summary(lm(training.processed$Log.SalePrice ~ log10(training.processed$LotFrontage) + training.processed$log10.LotArea ))
+
+plot(y = log10(training.processed$LotFrontage), x = training.processed$log10.LotArea, cex = 0.5, col = "navy" , pch = 19)
+abline(lm(log10(training.processed$LotFrontage) ~ training.processed$log10.LotArea))
+```
+It looks like this feature pretty much collinear with the LotArea feature, especially when log10 transformed. Therefore, we will remove this feature from both training and test data sets.
+
+```{r}
+training.processed <- dplyr::select(training.processed, -LotFrontage)
+test.processed <- dplyr::select(test.processed, -LotFrontage)
+```
+
+##MasVnrArea: Masonry veneer area in square feet
+
+Looking at more closely to this feature:
+
+```{r}
+plot(x = training.processed$MasVnrArea, y = training.processed$Log.SalePrice,cex = 0.5, col = "navy" , pch = 19)
+
+```
+Note that a large number of these values are zero, which probably reflects the houses with no masonry veener. What happens if we put these aside and look at the rest of the values:
+
+```{r}
+plot(x = log10(training.processed$MasVnrArea[training.processed$MasVnrArea != 0]), y = training.processed$Log.SalePrice[training.processed$MasVnrArea != 0],cex = 0.5, col = "navy" , pch = 19)
+```
+
+There might be 'some' relationship with the response, if not too strong. It is also a little confusing since the variable MasVnrType only has these 8 values as "none", but linked the large amount of MasVnrAre == 0 data to certain MasVnrTypes:
+
+
+```{r}
+qplot(data = training.processed,x = log10(training.processed$MasVnrArea), y = training.processed$Log.SalePrice, col = train$MasVnrType)
+     
+```
+
+It is more clear now. The "none" group indeed represent the MasVnrArea = 0, NAs however appear as missing values in both cases.
+
+```{r}
+ggplot(data = training.processed,aes(x = train$MasVnrType, y = training.processed$Log.SalePrice, fill = train$MasVnrType))+geom_boxplot()
+```
+We note that the SalePrice of the missing cases in the training set is closest to the SalePrice of the houses with Stone Masonry Veener type. It is likely that the area of the veener in some of these houses were not measured, perhaps it is more difficult to do so. This is our assumption.
+
+Based on this assumption, we will merge the NA cases with the Stone group and remove the MasVnrArea feature in both training and test data sets:
+
+```{r}
+training.processed$MasVnrType.None[training.processed$NO.MasVnrType == 1] <- 1
+training.processed <- dplyr::select(training.processed, -NO.MasVnrType, -MasVnrArea)
+
+test.processed$MasVnrType.None[test.processed$NO.MasVnrType == 1] <- 1
+test.processed <- dplyr::select(test.processed, -NO.MasVnrType, -MasVnrArea)
+```
+
+
+## Missing data remaining in the test set
+
+We still need to deal with few missing data points we have in the test set. Since we need to make SalePrice predictions for each of these cases, we need to assess how we can impute these values at this point:
+
+```{r}
+apply(is.na(test.processed), 2, sum)[apply(is.na(test.processed), 2, sum) != 0]
+```
+
+Some features regarding Basement and Garage have missing values:
+
+```{r}
+test.processed[which(is.na(test.processed)),which(apply(is.na(test.processed), 2, sum) != 0 )]
+```
+
+# Building models using training set 
 
 ## Fitting a lasso regression model to data
 
