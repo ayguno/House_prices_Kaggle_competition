@@ -531,9 +531,13 @@ for (i in 1:ncol(test.processed)) {
 
 This completes missing value imputation as no missing values left in either training and test data sets.
 
-# Predictive modeling using the training set
+#Predictive modeling using the training set
 
-## Fitting a lasso regression model to data
+##Using shrinkage methods (regularization)
+
+It would be  interesting to perform a linear model selection and see how well it might perform with the new training set we obtained.
+
+### Fitting a lasso regression model to data
 
 ```{r,eval=FALSE}
 
@@ -553,4 +557,15 @@ plot(fit.lasso, xvar = "dev", label = TRUE)
 ```
 
 
-Lasso is a nice way of reducing the features while still trying to explain the variance and therefore trying to win the bias-variance trade-off. In this case we notice that only 4 features are able to explain 30% of the deviance, while adding all features is only able to explain 40% of it. It is more feasible to use this restricted model with the few features and their shrunken coefficients.
+Lasso is a nice way of reducing the features while still trying to explain the variance and therefore trying to win the bias-variance trade-off. In this case we notice that only 3 features are able to explain 60% of the deviance, while adding 13 features is able to explain 80% of it. It is more feasible to use the restricted model with the few features and their shrunken coefficients.
+
+###Choosing the optimal lambda by using cross-validation
+
+It is best to choose the optimal lambda using cross-validation, with the aim of minimizing **mean squared error:**:
+
+```{r}
+
+cv.lasso <- cv.glmnet(x.training,y, family = "gaussian")
+plot(cv.lasso)
+
+```
