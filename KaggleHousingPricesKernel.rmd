@@ -565,6 +565,7 @@ It is best to choose the optimal lambda using cross-validation, with the aim of 
 
 ```{r}
 #cv.lasso will be the list containing the coefficients and information of our optimal model fit using cross-validation (10 fold by default)
+set.seed(123)
 cv.lasso <- cv.glmnet(x.training,y, family = "gaussian")
 plot(cv.lasso)
 
@@ -597,21 +598,70 @@ We also note that some of the dummy variables remained in the model, while major
 
 Let's first start with the training set:
 
-```{r}
+```{r, fig.align='center', fig.width=4, fig.height=4}
 pred <- predict(cv.lasso, newx = x.training)
 
-#Calculating the root mean squared error
-rmse.training = sqrt(mean((training.processed$Log.SalePrice - pred)^2))
-rmse.training
+#Let's write a function to streamline our analyses of the various models we will train:
 
-#Pearson correlation:
+log.rmse.training <- function(pred,observed,method){
+
+#pred: vector of predicted values (in log scale)
+#observed: vector of observed values (in log scale)
+#method: the method name used to built the predictive model        
+        
+#Calculating the root mean squared error:
+rmse.training = sqrt(mean((pred - observed)^2))
+
+#Calculating the Pearson correlation:
 cor.training = cor(training.processed$Log.SalePrice,pred)
 
-plot(x = pred, y = training.processed$Log.SalePrice, cex = 0.5, col = "navy", pch = 19)
-text(x = max(pred), y = min(training.processed$Log.SalePrice)+0.3,
+plot(x = pred, y = observed, cex = 0.5, col = "navy", pch = 19, 
+     main = method,xlab = "Log(Predicted)", ylab = "Log(Observed)")
+text(x = max(pred), y = min(observed)+0.4,
      labels = paste0("RMSE: ",rmse.training))
+text(x = max(pred), y = min(observed)+0.2,
+     labels = paste0("Pr.cor: ",cor.training))
+}
+
+log.rmse.training(pred = pred, observed = training.processed$Log.SalePrice, method = "Lasso")
 ```
 
 Therefore, the RMSE we obtained from the training set is ~15%. 
 
 Next we will try to use test set to estimate the house prices using our model.
+
+###Predictions using the test set
+
+Now we will prepare our predictions for submission:
+
+```{r}
+# These steps are needed otherwise predict() will complain!
+x.testing <- data.frame(x.testing)  # Convert test matrix to data frame
+x.testing$Log.SalePrice <- NULL  # Set the response to NULL (otherwise model object will keep looking at it and can't find one from the test set, throws error)
+
+# Finally retain only the features that exists in the training data matrix
+x.testing <- x.testing[,which(colnames(x.testing) %in% colnames(x.training))]
+
+pred.lasso <- predict(cv.lasso, newx = data.matrix(x.testing))
+
+# Note that these are predictions in log scale, we need to exponentiate them to get actual SalePrice predictions in the right scale;
+
+pred.lasso <- exp(pred.lasso)
+
+```
+
+We can write a function to streamline our submissions:
+
+```{r}
+prepare.submission <- function(id,pred,method){
+
+#pred: vector of predicted values from the test set (in linear scale)
+#id: vector of indices in the test set
+#method: the method name used to built the predictive model  
+        
+prediction.table <- data.frame(PassengerId = final_testing$PassengerId, 
+                           Survived = data.frame(Survived = pred.testing))  
+        
+}
+
+```
