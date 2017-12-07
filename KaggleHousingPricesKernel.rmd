@@ -539,7 +539,7 @@ It would be  interesting to perform a linear model selection and see how well it
 
 ### Fitting a lasso regression model to data
 
-```{r,eval=FALSE}
+```{r}
 
 library(glmnet)
 
