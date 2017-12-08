@@ -698,7 +698,7 @@ var.cumulative.percent <- NULL
 for(i in 1:length(var.vector)){
         var.cumulative.percent[i] <- sum(var.vector[1:i])/sum(var.vector[1:length(var.vector)])*100
 }
-plot(y = var.cumulative.percent, x = 1:length(var.cumulative), pch= 19, cex = 0.5, 
+plot(y = var.cumulative.percent, x = 1:length(var.cumulative.percent), pch= 19, cex = 0.5, 
      col = "navy", ylab = "% variance explained", xlab = "# of PCs")
 
 ```
@@ -742,4 +742,102 @@ We note that after ~25 PCs, the RMSE is stabilized around 0.16 and adding more c
 
 Let's train RF algorithm to see if we can get a better RMSE:
 
+```{r,cache=TRUE}
+set.seed(123)
+RF <- train(Log.SalePrice ~ ., data = training.processed,method = "rf", trControl = trainControl(method = "cv", number = 10)) 
+RF
+```
 
+It looks like we had some major improvement in training RMSE using the RF algorithm: 
+
+```{r}
+log.rmse.training(pred = predict(RF,training.processed),observed = training.processed$Log.SalePrice,method = " Random Forest")
+```
+
+###Variable importance in Random Forest
+
+```{r}
+imp <- data.frame(RF$finalModel$importance)
+imp[2] <- row.names(imp)
+imp <- dplyr::arrange(imp,IncNodePurity)
+head(imp,10)
+```
+
+### Evaluate the Random Forest RMSE in test data set
+
+```{r}
+pred.rf <- exp(predict(RF, newdata = test.processed)) #Note we exponentiate the predicted values to get back into linear scale
+```
+
+Finally, prepare our submission:
+```{r,eval=FALSE}
+prepare.submission(id = test.ID, pred = pred.rf, method = "RandomForest")
+```
+
+
+## Gradient boosting with cross validation
+
+```{r,cache=TRUE}
+set.seed(123)
+GBM <- train(Log.SalePrice ~ ., data = training.processed,method = "gbm", trControl = trainControl(method = "cv", number = 10), verbose = FALSE) 
+GBM
+```
+
+Gradient boosting provided a model with a further improved RMSE beyond lasso.
+
+```{r}
+log.rmse.training(pred = predict(GBM,training.processed),observed = training.processed$Log.SalePrice,method = " Gradient Boosting")
+```
+
+
+###Variable importance in Gradient Boosting:
+
+```{r}
+dotPlot(varImp(GBM))
+```
+
+It is interesting to note that gradient boosting found OverallQual feature as the most important, as we previosuly noticed. Also important to note that continuous features appear as more important predictors in regression. 
+
+
+### Evaluate the Gradient Boosting RMSE in test data set
+
+```{r}
+pred.gbm <- exp(predict(GBM, newdata = test.processed)) #Note we exponentiate the predicted values to get back into linear scale
+```
+
+Finally, prepare our submission:
+```{r,eval=FALSE}
+prepare.submission(id = test.ID, pred = pred.gbm, method = "GBM")
+```
+
+## Extreme gradient boosting with cross validation
+
+```{r,cache=TRUE}
+# set.seed(123)
+# xGB <- train(Log.SalePrice ~ ., data = training.processed,method = "xgbLinear", trControl = trainControl(method = "cv", number = 10), verbose = FALSE) 
+# xGB
+```
+
+## Support vector machines with a radial kernel with cross validation
+
+```{r,cache=TRUE}
+set.seed(123)
+SVM <- train(Log.SalePrice ~ ., data = training.processed,method = "svmRadial", trControl = trainControl(method = "cv", number = 10), verbose = FALSE) 
+SVM
+```
+
+```{r}
+log.rmse.training(pred = predict(SVM,training.processed),observed = training.processed$Log.SalePrice,method = " Support Vector Machines")
+```
+Support vector machines also provided some improvement beyond lasso.
+
+### Evaluate the Support Vector Machine RMSE in test data set
+
+```{r}
+pred.svm <- exp(predict(RF, newdata = test.processed)) #Note we exponentiate the predicted values to get back into linear scale
+```
+
+Finally, prepare our submission:
+```{r,eval=FALSE}
+prepare.submission(id = test.ID, pred = pred.svm, method = "SVM")
+```
