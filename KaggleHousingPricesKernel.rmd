@@ -654,14 +654,16 @@ We can write a function to streamline our submissions:
 
 ```{r}
 prepare.submission <- function(id,pred,method){
-
 #pred: vector of predicted values from the test set (in linear scale)
 #id: vector of indices in the test set
 #method: the method name used to built the predictive model  
-        
-prediction.table <- data.frame(PassengerId = final_testing$PassengerId, 
-                           Survived = data.frame(Survived = pred.testing))  
-        
+prediction.table <- data.frame(Id = id,SalePrice =  pred)
+colnames(prediction.table)[2] <- "SalePrice"
+write.csv(prediction.table,paste0(method,"_predictions",".csv"), row.names = F)
 }
+```
 
+Finally, prepare our submission:
+```{r,eval=FALSE}
+prepare.submission(id = test.ID, pred = pred.lasso, method = "Lasso")
 ```
