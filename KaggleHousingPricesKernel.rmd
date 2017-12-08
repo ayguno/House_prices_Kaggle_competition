@@ -667,3 +667,5 @@ Finally, prepare our submission:
 ```{r,eval=FALSE}
 prepare.submission(id = test.ID, pred = pred.lasso, method = "Lasso")
 ```
+
+The lasso model gave us a log RMSE of 0.15597, which is very close to the error we observed in the training set.
