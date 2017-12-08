@@ -672,3 +672,74 @@ The lasso model gave us a log RMSE of 0.15597, which is very close to the error 
 
 ##Using Principal Components for regression: beating the curse of dimensionality
 
+###Dimension reduction with the training set
+
+```{r}
+library(caret)
+#First get a PCA processing object
+prePCA <- preProcess(training.processed[,-1],method = "pca")
+#Generate the principal components from the training set 
+PCAtraining <- predict(prePCA,newdata = training.processed)
+dim(PCAtraining)
+# Note that we reduced the data set into 171 features(principal components)
+
+
+qplot(x = PC1, y = Log.SalePrice, data = PCAtraining,  alpha = I(0.3))+theme_bw()
+qplot(x = PC2, y = Log.SalePrice, data = PCAtraining,  alpha = I(0.3))+theme_bw()
+qplot(x = PC3, y = Log.SalePrice, data = PCAtraining,  alpha = I(0.3))+theme_bw()
+qplot(x = PC4, y= Log.SalePrice, data = PCAtraining,  alpha = I(0.3))+theme_bw()
+```
+
+Now let's wee if we can further reduce the dimensions. Lokking into how much variation we can cumulatively explain by principal components:
+
+```{r}
+var.vector <- apply(PCAtraining[-1], 2, var)
+var.cumulative.percent <- NULL
+for(i in 1:length(var.vector)){
+        var.cumulative.percent[i] <- sum(var.vector[1:i])/sum(var.vector[1:length(var.vector)])*100
+}
+plot(y = var.cumulative.percent, x = 1:length(var.cumulative), pch= 19, cex = 0.5, 
+     col = "navy", ylab = "% variance explained", xlab = "# of PCs")
+
+```
+
+It looks like about the first 100% PCs able to explain the 80% variance in the entire data set. This is still quite large number of dimensions.
+
+Let's follow the RMSE estimated by cross-validation in the training set if we happen to train regression models using these features:
+
+We will use the **pcr** function in the **pls** library to perform Principal Components Regression:
+
+```{r,cache=TRUE}
+library(pls)
+set.seed(2)
+pcr.fit <- pcr(Log.SalePrice ~ . , data = training.processed, scale = FALSE, validation = "CV", ncomp = 170)
+```
+
+- validation = "CV" : we ask the pcr function to compute a 10-fold cross-validation error for each possible value of the principal components (M) that can be derived from the data matrix.
+
+summary function is used to visualize the resulting model.fit object:
+
+```{r}
+summary(pcr.fit)
+```
+
+This output pretty much explains what is going on when we perform the PCR:
+
+**In the first section of the summary table we get the CV-estimated error:**
+
+- RMSEP: Note that pcr returns the root mean squared error (to get MSE, just square the RMSE values). For each number of components used in the model, the predicted RMSE from 10-fold CV is provided. 0-component model corresponds to the NULL model which just contains an intercept.
+
+We can use the **validationplot()** function to plot the cross-valitation estimated RMSE or MSE scores:
+
+
+```{r}
+validationplot(pcr.fit,val.type = "RMSEP")
+```
+
+We note that after ~25 PCs, the RMSE is stabilized around 0.16 and adding more components beyond has minimal impact. This training RMSE is not better than what we obtained from Lasso regression. 
+
+## Training Random Forest algorithm with cross validation
+
+Let's train RF algorithm to see if we can get a better RMSE:
+
+
