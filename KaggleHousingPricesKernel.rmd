@@ -1,5 +1,5 @@
 ---
-title: "Housing Prices"
+title: "Predicting the housing market in Iowa: scanning extreme gradient boosting for superior prediction"
 author: "Ozan Aygun"
 date: "11/26/2017"
 output: 
@@ -20,24 +20,31 @@ knitr::opts_chunk$set(results = "markup", fig.align = "center",
 
 # Introduction and summary
 
-# Loading the data
+Here I used the Ames housing data set to perform a fairly comprehensive analysis and predictive modeling to estimate house prices. I have extensively explored the training set, then performed feature engineering, missing value imputation and feature selection using the training set. Finally, I trained both linear models such as lasso regularization, PCA regression, as well as more complex algorithms including gradient boosting, extreme gradient boosting, random forest, and support vector machines. I have obtained a model that predicts house sale prices fairly well, with a RMSE of 0.12717 obtained from the test data set.
 
+# Loading the data
 
 ```{r}
 train <- read.csv("train.csv"); test <- read.csv("test.csv")
 ```
 
 # Summarizing the data
+
+Here, I will birefly look at the data just to get familiar with the features, missing values and anythin strange in general.
+
+The outcome variable SalePrice is a complete variable, but there are a number of predictors with many missing values. It looks like we will need to dela with quite a few missing values. Median house price is $163,000.
+
 ```{r}
 summary(train)
 ```
 
-The outcome variable SalePrice is a complete variable, but there are a number of predictors with many missing values. Median house price is $163,000.
+
 
 ```{r}
 par(mfrow = c(1,2))
 boxplot(train$SalePrice,main = "SalePrice")
 boxplot(log10(train$SalePrice), main = "Log10(SalePrice)")
+library(pls)
 ```
 
 ## Understanding the impact of missing data
@@ -587,7 +594,7 @@ The two vertical lines are produced in the plot, the left one marks the model wi
 The final (optimal) model coefficients we obtained by cross-validation and the non-zero features remaining:
 
 ```{r}
-coef(cv.lasso)
+head(coef(cv.lasso))
 ```
 
 Note that our final model includes ~30 features with non-zero coefficients. We therefore significantly reduced the size of the data set by selecting features through lasso regression. The resulting model explains more than 80% of the deviance in the outcome, which is considerable good for the training set.
@@ -774,6 +781,7 @@ Finally, prepare our submission:
 prepare.submission(id = test.ID, pred = pred.rf, method = "RandomForest")
 ```
 
+RF predictions gave us a RMSE of 0.14117 from the test data set, which is better than lasso, but same as SVM prediction.
 
 ## Gradient boosting with cross validation
 
@@ -810,13 +818,33 @@ Finally, prepare our submission:
 prepare.submission(id = test.ID, pred = pred.gbm, method = "GBM")
 ```
 
+GBM prediction gave us a RMSE of 0.12764 in the test data set, which is higher than lasso, RF or SVM.
+
 ## Extreme gradient boosting with cross validation
 
 ```{r,cache=TRUE}
-# set.seed(123)
-# xGB <- train(Log.SalePrice ~ ., data = training.processed,method = "xgbLinear", trControl = trainControl(method = "cv", number = 10), verbose = FALSE) 
-# xGB
+set.seed(123)
+xGB <- train(Log.SalePrice ~ ., data = training.processed,method = "xgbLinear", trControl = trainControl(method = "cv", number = 10), verbose = FALSE) 
+xGB
 ```
+
+Extreme Gradient boosting provided a model with a training RMSE of 0.029, which is quite good!
+
+```{r}
+log.rmse.training(pred = predict(xGB,training.processed),observed = training.processed$Log.SalePrice,method = "Extreme Gradient Boosting")
+```
+### Evaluate the Gradient Boosting RMSE in test data set
+
+```{r}
+pred.xgb <- exp(predict(xGB, newdata = test.processed)) #Note we exponentiate the predicted values to get back into linear scale
+```
+
+Finally, prepare our submission:
+```{r,eval=FALSE}
+prepare.submission(id = test.ID, pred = pred.xgb, method = "xGB")
+```
+
+Despite the remarkable performance in the training set, the xGB model provided us a RMSE of 0.14634 when using the test set. It sounds like xGB was overfitting to training set.
 
 ## Support vector machines with a radial kernel with cross validation
 
@@ -841,3 +869,185 @@ Finally, prepare our submission:
 ```{r,eval=FALSE}
 prepare.submission(id = test.ID, pred = pred.svm, method = "SVM")
 ```
+
+SVM prediction gave us a RMSE of 0.14117 in the test data set, which is better than lasso.
+
+## Using Principal Components along with Mechine Learning Algorithms
+
+Next, let's give a try what happens when we train machine learning algorithms using the principal components of the training set:
+
+### Gradient boosting with cross validation using Principal Components
+
+```{r,cache=TRUE}
+set.seed(123)
+GBM.PCA <- train(Log.SalePrice ~ ., data = PCAtraining,method = "gbm", trControl = trainControl(method = "cv", number = 10), verbose = FALSE) 
+GBM.PCA
+```
+
+Using principal components instead of the actual data slightly improved the RMSE in gradient boosting.
+
+```{r}
+log.rmse.training(pred = predict(GBM.PCA,PCAtraining),observed = training.processed$Log.SalePrice,method = " Gradient Boosting using PCs")
+```
+
+#### Evaluate the Gradient Boosting using PCs RMSE in test data set
+
+```{r}
+#Prepare principal components of the test set
+library(caret)
+#First get a PCA processing object
+prePCA.test <- preProcess(test.processed[,-1],method = "pca")
+#Generate the principal components from the training set 
+PCAtest <- predict(prePCA.test,newdata = test.processed)
+```
+
+
+```{r}
+pred.GBM.pca <- exp(predict(GBM.PCA, newdata = PCAtest)) #Note we exponentiate the predicted values to get back into linear scale
+```
+
+Finally, prepare our submission:
+```{r,eval=FALSE}
+prepare.submission(id = test.ID, pred = pred.GBM.pca, method = "GBM_pca")
+```
+
+This approach yields a RMSE of 0.2 in test data set, which is not as powerful as the GBM in the original data set.
+
+
+### Support vector machines with a radial kernel with cross validation using principal components
+
+```{r,cache=TRUE}
+set.seed(123)
+SVM.PCA <- train(Log.SalePrice ~ ., data = PCAtraining,method = "svmRadial", trControl = trainControl(method = "cv", number = 10), verbose = FALSE) 
+SVM.PCA
+```
+
+In the case of SMV, using Principal components seems not to improve the RMSE:
+
+```{r}
+log.rmse.training(pred = predict(SVM.PCA,PCAtraining),observed = training.processed$Log.SalePrice,method = " Support Vector Machines using PCs")
+```
+
+###Training Random Forest algorithm with cross validation using PCs
+
+Let's train RF algorithm to see if we can get a better RMSE:
+
+```{r,cache=TRUE}
+set.seed(123)
+RF <- train(Log.SalePrice ~ ., data = PCAtraining,method = "rf", trControl = trainControl(method = "cv", number = 10)) 
+RF
+```
+
+In the case of RF, using Principal components seems not to improve the RMSE:
+
+```{r}
+log.rmse.training(pred = predict(RF,PCAtraining),observed = training.processed$Log.SalePrice,method = "Random Forest using PCs")
+```
+
+
+# Refine the Gradient boosting model
+
+So far the best predictions we were able to make was using the GBM model. Next, we are going to ask whether we can make this model more flexbile to reduce the RMSE? PErhaps we had way more features than we needed and we were overfitting to the data.
+
+Let's inspect the variable importance for this model once again:
+
+```{r}
+dotPlot(varImp(GBM))
+```
+
+It looks like variable importance has already dropped significantly by the time we had 20 features in the model. Now the question is: what if we just have used the top few features to train a more flexible model:
+
+```{r}
+#Choose top10 features to train the model again
+library(dplyr)
+
+#It is hard to access the varImp elements
+# This trick helps: 
+col_index <- varImp(GBM)$importance %>% 
+  mutate(names=row.names(.)) %>%
+  arrange(-Overall)
+
+# The feature name vector including the response variable to fetch these features from the data set:
+top10.features = c("Log.SalePrice",col_index$names[1:10]) 
+
+```
+
+
+```{r,cache=TRUE}
+#Train the GBM model using only these features
+set.seed(123)
+GBM.top10 <- train(Log.SalePrice ~ ., data = training.processed[,top10.features],method = "gbm", trControl = trainControl(method = "cv", number = 10), verbose = FALSE) 
+GBM.top10
+```
+
+This gave us a model with a slightly higher RMSE in the training set:
+
+```{r, fig.align='center'}
+log.rmse.training(pred = predict(GBM.top10,training.processed[,top10.features]),observed = training.processed$Log.SalePrice,method = "GBM.top10")
+```
+
+## Estimate the RMSE in the test set using the GBM model restricted to top10 most important features:
+
+```{r}
+pred.GBM.top10 <- exp(predict(GBM.top10, newdata = test.processed[,top10.features[-1]])) #Note we exponentiate the predicted values to get back into linear scale
+```
+
+Finally, prepare our submission:
+```{r,eval=FALSE}
+prepare.submission(id = test.ID, pred = pred.GBM.top10 , method = "GBM_top10")
+```
+
+This gave us a RMSE of 0.14176 which is not as good as the original model.
+
+## Scan different GBM models for reduced training RMSE
+
+```{r,eval=FALSE}
+#Only perform once
+rmse.table <- data.frame(Number_of_features = 1:282, rmse = 1:282)
+for(i in 1:285){
+        set.seed(123)
+        #Add a less important feature, one at a time, and fit new models
+        features <- c("Log.SalePrice",col_index$names[1:i]) 
+        GBM.temp <- train(Log.SalePrice ~ ., data = training.processed[,features],method = "gbm", trControl = trainControl(method = "cv", number = 10), verbose = FALSE)
+        pred.temp <- predict(GBM.temp,training.processed[,features])
+        rmse.temp <-sqrt(mean((pred.temp - training.processed$Log.SalePrice)^2))
+        rmse.table$Number_of_features[i] = i
+        rmse.table$rmse[i] = rmse.temp
+}
+saveRDS(rmse.table, file = "rmse.table.rds")
+```
+
+```{r, fig.align='center', fig.width=9}
+#Find the model with minimum RMSE
+rmse.table <- readRDS("rmse.table.rds")
+rmse.table[which(rmse.table$rmse == min(rmse.table$rmse)),]
+
+plot(y = rmse.table$rmse, x = rmse.table$Number_of_features, pch = 19, cex = 0.6, col = "navy",
+     xlab = "RMSE", ylab = "Number of features in the GBM", main = "Scanning restricted GBM models for reduced RMSE ")
+```
+
+Note that the minimum RMSE is obtained using the model with 79 most important features. Including other features beyond this model does not further reduce the RMSE. Let's try to train and use the model formed by top79 most important features:
+
+```{r,cache=TRUE}
+top79.features = c("Log.SalePrice",col_index$names[1:79]) 
+#Train the GBM model using only these features
+set.seed(123)
+GBM.top79 <- train(Log.SalePrice ~ ., data = training.processed[,top79.features],method = "gbm", trControl = trainControl(method = "cv", number = 10), verbose = FALSE) 
+```
+
+## Estimate the RMSE in the test set using the GBM model restricted to top50 most important features:
+
+```{r}
+pred.GBM.top79 <- exp(predict(GBM.top79, newdata = test.processed[,top79.features[-1]])) #Note we exponentiate the predicted values to get back into linear scale
+```
+
+Finally, prepare our submission:
+```{r,eval=FALSE}
+prepare.submission(id = test.ID, pred = pred.GBM.top79 , method = "GBM_top79")
+```
+
+This approach using the top79 most important predictors reduced the test RMSE to 0.12717. Therefore, indeed the model might become more flexible by including less features. 
+
+# Conclusions
+
+We have obtained a fairly good model to predict the Sale Prices in the Ames housing data set. A RMSE of 0.12717 is not thrivial, but perhaps can be improved by using model ensemble methods as well as further feature engineering. I plan to revisit this problem in near future to apply and test more sophisticated approaches in order to reduce the RMSE in the test data set.
