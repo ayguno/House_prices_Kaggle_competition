@@ -1,7 +1,7 @@
 ---
 title: "Predicting the housing market in Iowa: scanning extreme gradient boosting for superior prediction"
 author: "Ozan Aygun"
-date: "11/26/2017"
+date: "12/10/2017"
 output: 
    html_document:
         toc: true
@@ -20,7 +20,7 @@ knitr::opts_chunk$set(results = "markup", fig.align = "center",
 
 # Introduction and summary
 
-Here I used the Ames housing data set to perform a fairly comprehensive analysis and predictive modeling to estimate house prices. I have extensively explored the training set, then performed feature engineering, missing value imputation and feature selection using the training set. Finally, I trained both linear models such as lasso regularization, PCA regression, as well as more complex algorithms including gradient boosting, extreme gradient boosting, random forest, and support vector machines. I have obtained a model that predicts house sale prices fairly well, with a RMSE of 0.12717 obtained from the test data set.
+Here I used the [Ames housing data set](https://ww2.amstat.org/publications/jse/v19n3/decock.pdf) to perform a fairly comprehensive analysis and predictive modeling to estimate house prices. I have extensively explored the training set, then performed feature engineering, missing value imputation and feature selection using the training set. Finally, I trained both linear models such as lasso regularization, PCA regression, as well as more complex algorithms including gradient boosting, extreme gradient boosting, random forest, and support vector machines. I have obtained a model that predicts house sale prices fairly well, with a RMSE of 0.12717 obtained from the test data set.
 
 # Loading the data
 
