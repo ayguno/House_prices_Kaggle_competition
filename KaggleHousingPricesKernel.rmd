@@ -30,9 +30,9 @@ train <- read.csv("train.csv"); test <- read.csv("test.csv")
 
 # Summarizing the data
 
-Here, I will birefly look at the data just to get familiar with the features, missing values and anythin strange in general.
+Here, I will briefly look at the data just to get familiar with the features, missing values and anything strange in general.
 
-The outcome variable SalePrice is a complete variable, but there are a number of predictors with many missing values. It looks like we will need to dela with quite a few missing values. Median house price is $163,000.
+The outcome variable SalePrice is a complete variable, but there are a number of predictors with many missing values. It looks like we will need to deal with quite a few missing values. Median house price is $163,000.
 
 ```{r}
 summary(train)
@@ -219,7 +219,7 @@ table(train$MiscFeature)
 ggplot(data = train, aes(x = MiscFeature, y = log10(SalePrice), fill = MiscFeature))+
         geom_boxplot()
 ```
-Again, very few houses have this features, and not sure if these qualities have a real impact on the house value amongst other measured features. Neverthless, I will maintain this feature as well. Just converting NAs to "NoMiscFeature" to be more clear:
+Again, very few houses have this features, and not sure if these qualities have a real impact on the house value amongst other measured features. Nevertheless, I will maintain this feature as well. Just converting NAs to "NoMiscFeature" to be more clear:
 
 ```{r}
 train$MiscFeature <- as.character(train$MiscFeature)
@@ -234,7 +234,7 @@ test$MiscFeature <- factor(test$MiscFeature)
 
 #Developing expectations from data
 
-Here I will explore the data further, in order to develope a better understanding about the relationships between features and the home prices.
+Here I will explore the data further, in order to develop a better understanding about the relationships between features and the home prices.
 
 ## Continuous features: watching for strong predictors and potential collinearities 
 
@@ -267,7 +267,7 @@ hist(train$MasVnrArea, breaks = 50,col = "navy");hist(log10(train$MasVnrArea+1),
 hist(train$BsmtFinSF1, breaks = 50,col = "navy");hist(log10(train$BsmtFinSF1+1),breaks=50,col = "navy")
 ```
 
-Indeed one of these features (LotArea) look more gaussian when it is log10 transformed. 
+Indeed one of these features (LotArea) look more Gaussian when it is log10 transformed. 
 
 ```{r,fig.width=6,fig.height=6}
 pairs(log10(train$SalePrice) ~ log10(train$LotArea+1) + log10(train$MasVnrArea+1) + log10(train$BsmtFinSF1+1),cex = 0.1, pch = 19, col = "navy")
@@ -428,7 +428,7 @@ It looks like this feature has some relationship with the outcome, as also we ca
 plot(training.processed$YearBuilt, training.processed$GarageYrBlt, pch = 19, col = "navy", cex = 0.5)
 ```
 
-As we expected, for most of the houses the year that garage was built is the same as the year the house was built. Therefore, for imputation purpose it is sensible to use the YearBuilt feature to fill these issing values in the GarageYrBuilt feature. While this is not consistent with the fact that these houses do not contain any garage, since we captured that in the categorical features we engineered, at this point imputing the years seems to be more appropriate than removing these data points alltogether:
+As we expected, for most of the houses the year that garage was built is the same as the year the house was built. Therefore, for imputation purpose it is sensible to use the YearBuilt feature to fill these missing values in the GarageYrBuilt feature. While this is not consistent with the fact that these houses do not contain any garage, since we captured that in the categorical features we engineered, at this point imputing the years seems to be more appropriate than removing these data points altogether:
 
 ```{r}
 #Impute in the training set
@@ -599,7 +599,7 @@ head(coef(cv.lasso))
 
 Note that our final model includes ~30 features with non-zero coefficients. We therefore significantly reduced the size of the data set by selecting features through lasso regression. The resulting model explains more than 80% of the deviance in the outcome, which is considerable good for the training set.
 
-We also note that some of the dummy variables remained in the model, while majority of them removed. It seems to be good idea to keep all levels as seperate dummy variables until the regularization, since we don't know which ones may be important in the final model context.
+We also note that some of the dummy variables remained in the model, while majority of them removed. It seems to be good idea to keep all levels as separate dummy variables until the regularization, since we don't know which ones may be important in the final model context.
 
 ###Making predictions using the best lasso model fit
 
@@ -697,7 +697,7 @@ qplot(x = PC3, y = Log.SalePrice, data = PCAtraining,  alpha = I(0.3))+theme_bw(
 qplot(x = PC4, y= Log.SalePrice, data = PCAtraining,  alpha = I(0.3))+theme_bw()
 ```
 
-Now let's wee if we can further reduce the dimensions. Lokking into how much variation we can cumulatively explain by principal components:
+Now let's wee if we can further reduce the dimensions. Looking into how much variation we can cumulatively explain by principal components:
 
 ```{r}
 var.vector <- apply(PCAtraining[-1], 2, var)
@@ -736,7 +736,7 @@ This output pretty much explains what is going on when we perform the PCR:
 
 - RMSEP: Note that pcr returns the root mean squared error (to get MSE, just square the RMSE values). For each number of components used in the model, the predicted RMSE from 10-fold CV is provided. 0-component model corresponds to the NULL model which just contains an intercept.
 
-We can use the **validationplot()** function to plot the cross-valitation estimated RMSE or MSE scores:
+We can use the **validationplot()** function to plot the cross-validation estimated RMSE or MSE scores:
 
 
 ```{r}
@@ -804,7 +804,7 @@ log.rmse.training(pred = predict(GBM,training.processed),observed = training.pro
 dotPlot(varImp(GBM))
 ```
 
-It is interesting to note that gradient boosting found OverallQual feature as the most important, as we previosuly noticed. Also important to note that continuous features appear as more important predictors in regression. 
+It is interesting to note that gradient boosting found OverallQual feature as the most important, as we previously noticed. Also important to note that continuous features appear as more important predictors in regression. 
 
 
 ### Evaluate the Gradient Boosting RMSE in test data set
@@ -844,7 +844,7 @@ Finally, prepare our submission:
 prepare.submission(id = test.ID, pred = pred.xgb, method = "xGB")
 ```
 
-Despite the remarkable performance in the training set, the xGB model provided us a RMSE of 0.14634 when using the test set. It sounds like xGB was overfitting to training set.
+Despite the remarkable performance in the training set, the xGB model provided us a RMSE of 0.14634 when using the test set. It sounds like xGB was over-fitting to training set.
 
 ## Support vector machines with a radial kernel with cross validation
 
@@ -947,7 +947,7 @@ log.rmse.training(pred = predict(RF,PCAtraining),observed = training.processed$L
 
 # Refine the Gradient boosting model
 
-So far the best predictions we were able to make was using the GBM model. Next, we are going to ask whether we can make this model more flexbile to reduce the RMSE? PErhaps we had way more features than we needed and we were overfitting to the data.
+So far the best predictions we were able to make was using the GBM model. Next, we are going to ask whether we can make this model more flexible to reduce the RMSE? Perhaps we had way more features than we needed and we were over-fitting to the data.
 
 Let's inspect the variable importance for this model once again:
 
@@ -1050,4 +1050,4 @@ This approach using the top79 most important predictors reduced the test RMSE to
 
 # Conclusions
 
-We have obtained a fairly good model to predict the Sale Prices in the Ames housing data set. A RMSE of 0.12717 is not thrivial, but perhaps can be improved by using model ensemble methods as well as further feature engineering. I plan to revisit this problem in near future to apply and test more sophisticated approaches in order to reduce the RMSE in the test data set.
+We have obtained a fairly good model to predict the Sale Prices in the Ames housing data set. A RMSE of 0.12717 is not trivial, but perhaps can be improved by using model ensemble methods as well as further feature engineering. I plan to revisit this problem in near future to apply and test more sophisticated approaches in order to reduce the RMSE in the test data set.
